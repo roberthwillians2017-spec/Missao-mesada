@@ -338,7 +338,7 @@ function iniciarFirebase(){
   var c=window.FIREBASE_CONFIG;
   if(!window.firebase||!c||!c.apiKey||/COLE/.test(c.apiKey)){telaAviso('Falta configurar o Firebase','Cole o bloco firebaseConfig do seu projeto no início do arquivo index.html e publique de novo.');return}
   try{firebase.initializeApp(c);db=firebase.database()}catch(e){telaAviso('Configuração inválida','Confira o bloco firebaseConfig no index.html. Ele precisa ter o databaseURL.');return}
-  db.ref('.info/connected').on('value',function(s){online=!!s.val();if(pronto)render()});
+  db.ref('.info/connected').on('value',function(s){online=!!s.val();if(pronto&&!ui.draft&&!ui.pin)render()});
   db.ref('mesada').on('value',function(snap){
     var v=snap.val()||{};
     if(!v.config){db.ref('mesada/config').set(PADRAO);return}
@@ -347,25 +347,29 @@ function iniciarFirebase(){
        tarefas:lista(k.tarefas).map(function(t){t.dias=lista(t.dias).map(Number);t.valor=Number(t.valor);return t}),
        extras:lista(k.extras).map(function(x){x.valor=Number(x.valor);return x}),
        lanc:lista(v.lanc).map(function(l){l.valor=Number(l.valor);return l})};
-    pronto=true;render();
+    pronto=true;
+    var ae=document.activeElement,digitando=ae&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)&&(ui.draft||ui.pin);
+    if(!digitando)render();
   },function(err){telaAviso('Não consegui ler os dados','O banco recusou a leitura ('+esc(err&&err.code||'erro')+'). Confira se as regras do Realtime Database foram publicadas.')});
 }
 async function salvar(st,msg,tipo){
-  if(ui.busy)return;
-  if(!db){toast('Sem conexão com o banco.');return}
+  if(ui.busy)return false;
+  if(!db){toast('Sem conexão com o banco.');return false}
   var up={};
   ['nome','base','inicio','pin','tarefas','extras'].forEach(function(k){if(JSON.stringify(st[k])!==JSON.stringify(S[k]))up['mesada/config/'+k]=st[k]==null?null:st[k]});
   var antes={},depois={};S.lanc.forEach(function(l){antes[l.id]=l});st.lanc.forEach(function(l){depois[l.id]=l});
   Object.keys(depois).forEach(function(id){if(!antes[id])up['mesada/lanc/'+id]=depois[id]});
   Object.keys(antes).forEach(function(id){if(!depois[id])up['mesada/lanc/'+id]=null});
-  if(!Object.keys(up).length)return;
+  if(!Object.keys(up).length)return true;
   ui.busy=true;render();
   try{
     await Promise.race([db.ref().update(up),new Promise(function(r){setTimeout(r,online?15000:400)})]);
     ui.busy=false;render();toast(online?msg:msg+' · vai sincronizar quando a internet voltar',tipo);
+    return true;
   }catch(e){
     ui.busy=false;render();
     toast(String(e&&(e.code||e.message)||'').toUpperCase().indexOf('PERMISSION')>-1?'O banco recusou a gravação. Confira as regras do Firebase.':'Não consegui salvar. Tente de novo.');
+    return false;
   }
 }
 function toast(t,tipo){
@@ -601,7 +605,7 @@ document.addEventListener('click',async function(e){
     st=clone(S);
     st.tarefas=ui.draft.tarefas.map(function(t){return {id:t.id,nome:t.nome.trim(),dias:t.dias.slice(),valor:r2(numIn(t.valor))}});
     st.extras=ui.draft.extras.map(function(x){return {id:x.id,nome:x.nome.trim(),tipo:x.tipo,valor:r2(numIn(x.valor))}});
-    salvar(st,'Regras salvas');
+    if(await salvar(st,'Regras salvas','win')){ui.draft=null;render();window.scrollTo(0,0)}
   }
 });
 document.addEventListener('input',function(e){

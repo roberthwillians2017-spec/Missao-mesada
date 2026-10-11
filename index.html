@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Missão Mesada</title>
+<meta name="theme-color" content="#090C16">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Missão Mesada">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+
+/* Layout: painel de jogo em coluna única. Ficha do jogador, cofre (barra de vida), placar, mapa da semana, abas, rodapé de modo. Visual escuro único, de propósito. */
+:root{
+  --bg:#090C16; --panel:#111729; --panel2:#18203A; --line:#26304F; --ink:#EAF0FF; --muted:#8E9AC0;
+  --cyan:#35E0FF; --gold:#FFC23D; --red:#FF4D6A; --green:#3BF0A0; --violet:#A394FF;
+  --f-game:'Chakra Petch','Segoe UI',system-ui,sans-serif;
+  --f-body:'Rubik','Segoe UI',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  background-image:radial-gradient(ellipse 80% 40% at 50% -10%,color-mix(in srgb,var(--violet) 22%,transparent),transparent),
+  repeating-linear-gradient(0deg,transparent 0 31px,color-mix(in srgb,var(--line) 35%,transparent) 31px 32px);
+  background-attachment:fixed}
+#app{max-width:560px;margin:0 auto;padding:18px 16px 104px;display:flex;flex-direction:column;gap:16px}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-game);margin:0;text-wrap:balance}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.lbl{font-family:var(--f-game);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.panel{background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:16px;padding:16px}
+
+/* Ficha do jogador */
+.player{display:flex;gap:14px;align-items:center}
+.avatar{width:58px;height:64px;flex:none;position:relative;display:grid;place-items:center;color:var(--violet)}
+.avatar svg{position:absolute;inset:0;width:100%;height:100%}
+.avatar b{position:relative;font-family:var(--f-game);font-size:1.5rem;color:var(--ink)}
+.player .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.player h1{font-size:1.35rem;font-weight:700;line-height:1.1}
+.rank{font-family:var(--f-game);color:var(--violet);font-weight:600;font-size:.9rem}
+.xpbar{height:10px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);overflow:hidden}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--cyan));box-shadow:0 0 12px var(--cyan)}
+.xptxt{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted)}
+.xptxt b{color:var(--cyan);font-family:var(--f-game)}
+
+/* Cofre = barra de vida */
+.cofre{display:flex;flex-direction:column;gap:12px}
+.cofre-top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.cofre .valor{font-family:var(--f-game);font-weight:700;font-size:clamp(2.4rem,11vw,3.1rem);line-height:1;color:var(--gold);text-shadow:0 0 18px color-mix(in srgb,var(--gold) 40%,transparent)}
+.cofre .de{color:var(--muted);font-size:.85rem;text-align:right}
+.hp{display:grid;grid-template-columns:repeat(20,1fr);gap:3px}
+.hp span{height:18px;border-radius:3px;background:var(--panel2);border:1px solid color-mix(in srgb,var(--red) 40%,var(--line));position:relative;overflow:hidden}
+.hp span i{position:absolute;inset:0 auto 0 0;background:var(--gold);box-shadow:inset 0 -4px 0 color-mix(in srgb,var(--gold) 60%,#000)}
+.hp.bonus span{border-color:color-mix(in srgb,var(--green) 50%,var(--line))}
+.hp.bonus span i{background:var(--green);box-shadow:inset 0 -4px 0 color-mix(in srgb,var(--green) 60%,#000)}
+.mov{display:flex;gap:16px;flex-wrap:wrap;font-weight:600;font-size:.92rem}
+.neg{color:var(--red)} .pos{color:var(--green)} .gold{color:var(--gold)} .cy{color:var(--cyan)}
+
+/* Placar */
+.placar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .v{font-family:var(--f-game);font-size:1.5rem;font-weight:700;line-height:1.1;display:flex;align-items:center;gap:6px}
+.stat .v svg{width:20px;height:20px;flex:none}
+.stat .t{font-size:.75rem;color:var(--muted)}
+
+/* Mapa da semana */
+.semana{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.sd{display:flex;flex-direction:column;align-items:center;gap:4px}
+.sd .q{width:100%;aspect-ratio:1;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--panel2);display:grid;place-items:center;font-family:var(--f-game);font-weight:700;font-size:.85rem;color:var(--muted)}
+.sd .q svg{width:18px;height:18px}
+.sd.ok .q{background:color-mix(in srgb,var(--green) 18%,var(--panel));border-color:var(--green);color:var(--green)}
+.sd.no .q{background:color-mix(in srgb,var(--red) 18%,var(--panel));border-color:var(--red);color:var(--red)}
+.sd.hoje .q{border:2px solid var(--cyan);color:var(--cyan);animation:pulso 2s ease-in-out infinite}
+.sd.fora .q{opacity:.35}
+.sd .d{font-size:.72rem;color:var(--muted);font-family:var(--f-game)}
+@keyframes pulso{50%{box-shadow:0 0 14px color-mix(in srgb,var(--cyan) 60%,transparent)}}
+
+/* Abas */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{border:0;background:transparent;padding:9px 4px;border-radius:9px;font-family:var(--f-game);font-weight:600;font-size:.82rem;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
+.tabs button[aria-selected="true"]{background:var(--cyan);color:var(--bg)}
+
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.sec-h h2{font-size:1.05rem;font-weight:600;letter-spacing:.02em}
+.dica{color:var(--muted);font-size:.85rem}
+
+/* Cartões de missão */
+.missoes{display:flex;flex-direction:column;gap:8px}
+.missao{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+.missao .ico{width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;background:var(--panel2);color:var(--cyan);border:1px solid var(--line)}
+.missao .ico svg{width:24px;height:24px}
+.missao .txt{flex:1;min-width:0}
+.missao .nome{font-weight:600;line-height:1.25}
+.missao .sub{color:var(--muted);font-size:.8rem;margin-top:2px}
+.missao.ok{border-color:color-mix(in srgb,var(--green) 55%,var(--line))}
+.missao.ok .ico{color:var(--green)}
+.missao.no{border-color:var(--red);background:color-mix(in srgb,var(--red) 10%,var(--panel))}
+.missao.no .ico{color:var(--red)}
+.tag{font-family:var(--f-game);font-size:.72rem;font-weight:700;letter-spacing:.08em;padding:5px 8px;border-radius:7px;white-space:nowrap;text-transform:uppercase}
+.tag.jogo{color:var(--cyan);border:1px solid var(--cyan)}
+.tag.ok{color:var(--bg);background:var(--green)}
+.tag.no{color:var(--bg);background:var(--red)}
+.lado{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+
+.list{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .txt{flex:1;min-width:0}
+.row .nome{font-weight:600}
+.row .sub{color:var(--muted);font-size:.82rem}
+.val{font-family:var(--f-game);font-weight:700;white-space:nowrap}
+.vazio{padding:18px 14px;color:var(--muted);text-align:center}
+
+.btn{border:1px solid var(--line);background:var(--panel2);padding:8px 12px;border-radius:10px;font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.prim{background:var(--cyan);color:var(--bg);border-color:var(--cyan)}
+.btn.perigo{color:var(--red);border-color:color-mix(in srgb,var(--red) 70%,var(--line))}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:6px 10px;font-size:.82rem}
+
+.campo{display:flex;flex-direction:column;gap:4px}
+.campo label{font-size:.78rem;font-weight:600;color:var(--muted)}
+input[type=text],input[type=date],input[type=password],select{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;width:100%}
+.datebar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.datebar .campo{flex:1;min-width:150px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.extra-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px 12px}
+.extra-btn .n{font-weight:600;font-size:.88rem}
+.extra-btn.d{border-color:color-mix(in srgb,var(--red) 50%,var(--line))}
+.extra-btn.b{border-color:color-mix(in srgb,var(--green) 50%,var(--line))}
+
+/* Medalhas */
+.medalhas{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.medalha{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.medalha .topo{display:flex;gap:10px;align-items:center}
+.medalha .em{width:40px;height:44px;flex:none;color:var(--line);position:relative;display:grid;place-items:center}
+.medalha .em svg{position:absolute;inset:0;width:100%;height:100%}
+.medalha .em svg.in{position:relative;width:18px;height:18px;inset:auto}
+.medalha .n{font-weight:600;font-size:.9rem;line-height:1.2}
+.medalha .s{color:var(--muted);font-size:.78rem}
+.medalha.on{border-color:color-mix(in srgb,var(--gold) 60%,var(--line))}
+.medalha.on .em{color:var(--gold);filter:drop-shadow(0 0 8px color-mix(in srgb,var(--gold) 50%,transparent))}
+.medalha.on .em .in{color:var(--bg)}
+.medalha .em .in{color:var(--muted)}
+.prog{height:6px;border-radius:99px;background:var(--panel2);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--cyan)}
+.medalha.on .prog i{background:var(--gold)}
+.niveis .row.atual{background:color-mix(in srgb,var(--violet) 14%,var(--panel))}
+.niveis .row.atual .nome{color:var(--violet)}
+
+.dias{display:flex;gap:3px;flex-wrap:wrap}
+.dia{width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-size:.72rem;font-weight:700;font-family:var(--f-game);background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.dia.on{background:color-mix(in srgb,var(--cyan) 20%,var(--panel2));color:var(--cyan);border-color:var(--cyan)}
+button.dia{width:32px;height:32px}
+.regra{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;color:var(--muted)}
+.regra b{color:var(--ink)}
+.edit-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.edit-linha{display:grid;grid-template-columns:1fr 96px;gap:8px}
+.soma{font-weight:700;padding:10px 14px;border-radius:12px;background:color-mix(in srgb,var(--red) 15%,var(--panel));color:var(--red)}
+.soma.ok{background:color-mix(in srgb,var(--green) 15%,var(--panel));color:var(--green)}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.aviso{background:color-mix(in srgb,var(--gold) 12%,var(--panel));border:1px solid color-mix(in srgb,var(--gold) 60%,var(--line));border-radius:12px;padding:10px 14px;font-size:.88rem}
+
+.bar{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--panel) 96%,transparent);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));z-index:3;backdrop-filter:blur(6px)}
+.bar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 12px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--violet);color:var(--bg)}
+.sheet-bg{position:fixed;inset:0;background:color-mix(in srgb,#000 60%,transparent);display:grid;place-items:end center;padding:16px;z-index:5}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px)}
+.sheet h3{font-size:1.15rem}
+.sheet input{font-size:1.4rem;letter-spacing:.4em;text-align:center}
+.erro{color:var(--red);font-weight:600;font-size:.9rem}
+.toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;z-index:9;max-width:calc(100% - 32px);text-align:center}
+.toast.win{background:var(--green);font-family:var(--f-game);font-size:1.1rem;letter-spacing:.04em;animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+.toast.loss{background:var(--red);color:var(--ink);font-family:var(--f-game);animation:shake .4s}
+@keyframes pop{from{transform:translateX(-50%) scale(.5);opacity:0}}
+@keyframes shake{25%{transform:translateX(-52%)}75%{transform:translateX(-48%)}}
+.ocupado{opacity:.6;pointer-events:none}
+@media (max-width:380px){.medalhas{grid-template-columns:1fr}.tabs button{font-size:.72rem}}
+@media (prefers-reduced-motion: reduce){.sd.hoje .q,.toast.win,.toast.loss{animation:none}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+
+<!-- =========================================================
+     CONFIGURAÇÃO DO FIREBASE
+     Cole aqui o bloco firebaseConfig do seu projeto
+     (Configurações do projeto > Seus apps > App da Web).
+     ========================================================= -->
+<script>
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCe2UiYhyMryPFYQaliZPlkN53t9Fl1IjM",
+  authDomain: "missao-mesada-2691a.firebaseapp.com",
+  databaseURL: "https://missao-mesada-2691a-default-rtdb.firebaseio.com",
+  projectId: "missao-mesada-2691a",
+  storageBucket: "missao-mesada-2691a.firebasestorage.app",
+  messagingSenderId: "594306658098",
+  appId: "1:594306658098:web:e729ffb6c3ad8a9573312b"
+};
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+(function(){
+var DIAS=['D','S','T','Q','Q','S','S'];
+var DIAS_NOME=['dom','seg','ter','qua','qui','sex','sáb'];
+var MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+var PADRAO={"nome": "Junior", "base": 100, "inicio": "2026-10-11", "pin": "e2ce14ea8228969f5ebeafe5d307110fefac0a013ed2c27f8a00c1da507fca68", "tarefas": [{"id": "t1", "nome": "Retirar o lixo dos banheiros", "dias": [0, 2, 4], "valor": 15}, {"id": "t2", "nome": "Subir os lixos", "dias": [0, 2, 4], "valor": 15}, {"id": "t3", "nome": "Secar toda a louça e guardar a que sabe", "dias": [0, 1, 2, 3, 4, 5, 6], "valor": 20}, {"id": "t4", "nome": "Lavar a louça do café da manhã", "dias": [0, 1, 2, 3, 4, 5, 6], "valor": 25}, {"id": "t5", "nome": "Colocar a toalha no banheiro", "dias": [0, 1, 2, 3, 4, 5, 6], "valor": 10}, {"id": "t6", "nome": "Arrumar a cama", "dias": [0, 1, 2, 3, 4, 5, 6], "valor": 15}], "extras": [{"id": "e1", "nome": "Reclamação", "tipo": "desconto", "valor": 3}, {"id": "e2", "nome": "Respondeu a mãe", "tipo": "desconto", "valor": 10}, {"id": "e3", "nome": "Tarefa extra sem pedirem", "tipo": "bonus", "valor": 5}, {"id": "e4", "nome": "Bom comportamento", "tipo": "bonus", "valor": 3}]};
+var S=JSON.parse(JSON.stringify(PADRAO));S.lanc=[];
+var pronto=false,online=true,db=null;
+function sg(k){try{return sessionStorage.getItem(k)}catch(e){return null}}
+function ssv(k,v){try{if(v==null)sessionStorage.removeItem(k);else sessionStorage.setItem(k,v)}catch(e){}}
+function lg(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsv(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+function pad(n){return (n<10?'0':'')+n}
+function fmt(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function hoje(){return fmt(new Date())}
+function mesDe(ds){return ds.slice(0,7)}
+function partes(ds){return ds.split('-').map(Number)}
+function dt(ds){var p=partes(ds);return new Date(p[0],p[1]-1,p[2])}
+function somaDias(ds,n){var d=dt(ds);d.setDate(d.getDate()+n);return fmt(d)}
+function diaSemana(ds){return dt(ds).getDay()}
+function nomeMes(mes){var p=partes(mes);return MESES[p[1]-1]+' de '+p[0]}
+function ocorr(dias,mes){var p=partes(mes),n=new Date(p[0],p[1],0).getDate(),c=0;for(var d=1;d<=n;d++){if(dias.indexOf(new Date(p[0],p[1]-1,d).getDay())>-1)c++}return c}
+function r2(v){return Math.round(v*100)/100}
+function porFalta(t,mes){var c=ocorr(t.dias,mes);return c?r2(t.valor/c):0}
+function brl(v){return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function dataCurta(ds){var p=partes(ds);return DIAS_NOME[diaSemana(ds)]+', '+pad(p[2])+'/'+pad(p[1])}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function numIn(v){var s=String(v).trim();if(s.indexOf(',')>-1)s=s.replace(/\./g,'').replace(',','.');var n=parseFloat(s);return isFinite(n)?n:0}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+async function hash(pin){
+  var txt='missao-mesada:'+pin;
+  try{var b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}
+  catch(e){var h=5381;for(var i=0;i<txt.length;i++)h=((h<<5)+h+txt.charCodeAt(i))|0;return 'd'+(h>>>0).toString(16)}
+}
+
+var ui={
+  tab:sg('mm_tab')||'hoje', data:sg('mm_data')||hoje(), pais:sg('mm_pais')==='1',
+  por:lg('mm_por')||'Pai', busy:false, readOnly:false, pin:null, pinErr:'', conf:null, draft:null
+};
+if(ui.data>hoje())ui.data=hoje();
+
+/* ===================== DINHEIRO (regras de negócio, sem mudança) ===================== */
+function resumo(mes){
+  var perdas=0,ganhos=0;
+  S.lanc.forEach(function(l){if(l.mes!==mes)return;if(l.valor<0)perdas+=l.valor;else ganhos+=l.valor});
+  perdas=r2(perdas);ganhos=r2(ganhos);
+  return {perdas:perdas,ganhos:ganhos,saldo:Math.max(0,r2(S.base+perdas+ganhos))};
+}
+
+/* ===================== JOGO (só pontos e medalhas, não mexe no dinheiro) ===================== */
+var XP_TAREFA=10, XP_DIA_PERFEITO=20, XP_BONUS=15;
+var NIVEIS=[[0,'Recruta'],[200,'Aprendiz'],[600,'Ajudante de Elite'],[1200,'Guardião da Casa'],[2000,'Mestre da Casa'],[3200,'Lenda da Casa']];
+function infoDia(ds){
+  var wd=diaSemana(ds),ag=S.tarefas.filter(function(t){return t.dias.indexOf(wd)>-1});
+  var f=0,desc=0,bon=0,faltaIds=[];
+  S.lanc.forEach(function(l){if(l.d!==ds)return;
+    if(l.tipo==='falta'){f++;faltaIds.push(l.ref)}
+    else if(l.valor<0)desc++;else bon++;});
+  return {agendadas:ag.length,faltas:f,cumpridas:Math.max(0,ag.length-f),desc:desc,bonus:bon,perfeito:f===0&&desc===0,faltaIds:faltaIds,tarefas:ag};
+}
+function diasFechados(){var out=[],ontem=somaDias(hoje(),-1),d=S.inicio;while(d<=ontem){out.push(d);d=somaDias(d,1)}return out}
+function maiorSeq(dias,teste){var m=0,c=0;dias.forEach(function(d){if(teste(d)){c++;if(c>m)m=c}else c=0});return m}
+function achaTarefa(trecho){trecho=trecho.toLowerCase();return S.tarefas.find(function(t){return t.nome.toLowerCase().indexOf(trecho)>-1})}
+function jogo(){
+  var fech=diasFechados(),info={};fech.forEach(function(d){info[d]=infoDia(d)});
+  var xp=0,perfeitos=0,perfMes=0,mesAt=mesDe(hoje());
+  fech.forEach(function(d){var i=info[d];xp+=i.cumpridas*XP_TAREFA+(i.perfeito?XP_DIA_PERFEITO:0);if(i.perfeito){perfeitos++;if(mesDe(d)===mesAt)perfMes++}});
+  S.lanc.forEach(function(l){if(l.tipo==='extra'&&l.valor>0&&l.d>=S.inicio)xp+=XP_BONUS});
+  var seq=0;for(var k=fech.length-1;k>=0;k--){if(info[fech[k]].perfeito)seq++;else break}
+  var maxSeq=maiorSeq(fech,function(d){return info[d].perfeito});
+  var cama=achaTarefa('cama'),cafe=achaTarefa('café');
+  function tarefaOk(t){return function(d){var i=info[d];return t&&t.dias.indexOf(diaSemana(d))>-1&&i.faltaIds.indexOf(t.id)<0}}
+  var seqCama=cama?maiorSeq(fech.filter(function(d){return cama.dias.indexOf(diaSemana(d))>-1}),tarefaOk(cama)):0;
+  var totCafe=cafe?fech.filter(tarefaOk(cafe)).length:0;
+  var seqCalmo=maiorSeq(fech,function(d){return info[d].desc===0});
+  var mesesOuro=0,m0=mesDe(S.inicio);
+  (function(){var p=partes(m0),d=new Date(p[0],p[1]-1,1);while(fmt(d).slice(0,7)<mesAt){var mk=fmt(d).slice(0,7);if(resumo(mk).saldo>=90)mesesOuro++;d.setMonth(d.getMonth()+1)}})();
+  var nv=0;for(var n=0;n<NIVEIS.length;n++){if(xp>=NIVEIS[n][0])nv=n}
+  var prox=NIVEIS[nv+1];
+  var medalhas=[
+    {n:'Primeiro dia perfeito',s:'Um dia inteiro sem falta e sem desconto',a:Math.min(perfeitos,1),t:1,i:'estrela'},
+    {n:'Semana perfeita',s:'7 dias perfeitos seguidos',a:Math.min(maxSeq,7),t:7,i:'chama'},
+    {n:'Cama de quartel',s:'7 dias seguidos com a cama arrumada',a:Math.min(seqCama,7),t:7,i:'cama'},
+    {n:'Semana sem reclamar',s:'7 dias seguidos sem desconto de comportamento',a:Math.min(seqCalmo,7),t:7,i:'calmo'},
+    {n:'Mestre da louça',s:'30 dias com a louça do café lavada',a:Math.min(totCafe,30),t:30,i:'prato'},
+    {n:'Quinzena de ferro',s:'15 dias perfeitos seguidos',a:Math.min(maxSeq,15),t:15,i:'escudo'},
+    {n:'Mês de ouro',s:'Fechar um mês com R$ 90 ou mais',a:Math.min(mesesOuro,1),t:1,i:'moeda'},
+    {n:'Lenda da casa',s:'Chegar a 3.200 XP',a:Math.min(xp,3200),t:3200,i:'coroa'}
+  ];
+  return {xp:xp,nivel:nv+1,rank:NIVEIS[nv][1],base:NIVEIS[nv][0],prox:prox,seq:seq,maxSeq:maxSeq,perfMes:perfMes,medalhas:medalhas,info:info};
+}
+
+/* ===================== Ícones ===================== */
+var ICO={
+  lixo:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
+  prato:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/>',
+  toalha:'<path d="M3 5h18M6 5v15h9V5M15 5v7h3V5M9 9h3"/>',
+  cama:'<path d="M3 19V7M3 15h18v4M21 15v-2.5A2.5 2.5 0 0 0 18.5 10H11v5M7 12.5a1.6 1.6 0 1 0 0-.01"/>',
+  estrela:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  chama:'<path d="M12 3c1 4 5.5 5.5 5.5 10.5a5.5 5.5 0 0 1-11 0c0-2.8 1.6-3.9 2.2-5.6 1 1.6 1.6 2.2 2.7 2.2C12.5 8 11 6 12 3z"/>',
+  calmo:'<circle cx="12" cy="12" r="9"/><path d="M8 14.5c1 1.3 2.4 2 4 2s3-.7 4-2M9 9.5h.01M15 9.5h.01"/>',
+  escudo:'<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+  moeda:'<circle cx="12" cy="12" r="8.5"/><path d="M14.5 9.2c-.6-.8-1.5-1.2-2.5-1.2-1.4 0-2.5.8-2.5 2s1.1 1.6 2.5 2 2.5.9 2.5 2-1.1 2-2.5 2c-1 0-2-.4-2.6-1.2M12 6.5v11"/>',
+  coroa:'<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>'
+};
+function svg(nome,extra){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'+(extra||'')+'>'+(ICO[nome]||ICO.estrela)+'</svg>'}
+function iconeTarefa(nome){var n=nome.toLowerCase();
+  if(n.indexOf('lixo')>-1)return 'lixo';if(n.indexOf('louça')>-1||n.indexOf('louca')>-1||n.indexOf('prato')>-1)return 'prato';
+  if(n.indexOf('toalha')>-1)return 'toalha';if(n.indexOf('cama')>-1)return 'cama';return 'estrela'}
+var HEX='<svg viewBox="0 0 40 44" aria-hidden="true"><path d="M20 1.5l17 9.5v22L20 42.5 3 33V11z" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="2"/></svg>';
+
+/* ===================== Firebase: lê tudo em tempo real e grava só o que mudou ===================== */
+function lista(x){return !x?[]:Array.isArray(x)?x.filter(Boolean):Object.values(x)}
+function telaAviso(titulo,texto){document.getElementById('app').innerHTML='<section class="panel" style="display:flex;flex-direction:column;gap:8px"><span class="lbl">Missão Mesada</span><h1 style="font-size:1.3rem">'+titulo+'</h1><div class="dica">'+texto+'</div></section>'}
+function iniciarFirebase(){
+  var c=window.FIREBASE_CONFIG;
+  if(!window.firebase||!c||!c.apiKey||/COLE/.test(c.apiKey)){telaAviso('Falta configurar o Firebase','Cole o bloco firebaseConfig do seu projeto no início do arquivo index.html e publique de novo.');return}
+  try{firebase.initializeApp(c);db=firebase.database()}catch(e){telaAviso('Configuração inválida','Confira o bloco firebaseConfig no index.html. Ele precisa ter o databaseURL.');return}
+  db.ref('.info/connected').on('value',function(s){online=!!s.val();if(pronto)render()});
+  db.ref('mesada').on('value',function(snap){
+    var v=snap.val()||{};
+    if(!v.config){db.ref('mesada/config').set(PADRAO);return}
+    var k=v.config;
+    S={nome:k.nome||PADRAO.nome,base:Number(k.base)||PADRAO.base,inicio:k.inicio||PADRAO.inicio,pin:k.pin||null,
+       tarefas:lista(k.tarefas).map(function(t){t.dias=lista(t.dias).map(Number);t.valor=Number(t.valor);return t}),
+       extras:lista(k.extras).map(function(x){x.valor=Number(x.valor);return x}),
+       lanc:lista(v.lanc).map(function(l){l.valor=Number(l.valor);return l})};
+    pronto=true;render();
+  },function(err){telaAviso('Não consegui ler os dados','O banco recusou a leitura ('+esc(err&&err.code||'erro')+'). Confira se as regras do Realtime Database foram publicadas.')});
+}
+async function salvar(st,msg,tipo){
+  if(ui.busy)return;
+  if(!db){toast('Sem conexão com o banco.');return}
+  var up={};
+  ['nome','base','inicio','pin','tarefas','extras'].forEach(function(k){if(JSON.stringify(st[k])!==JSON.stringify(S[k]))up['mesada/config/'+k]=st[k]==null?null:st[k]});
+  var antes={},depois={};S.lanc.forEach(function(l){antes[l.id]=l});st.lanc.forEach(function(l){depois[l.id]=l});
+  Object.keys(depois).forEach(function(id){if(!antes[id])up['mesada/lanc/'+id]=depois[id]});
+  Object.keys(antes).forEach(function(id){if(!depois[id])up['mesada/lanc/'+id]=null});
+  if(!Object.keys(up).length)return;
+  ui.busy=true;render();
+  try{
+    await Promise.race([db.ref().update(up),new Promise(function(r){setTimeout(r,online?15000:400)})]);
+    ui.busy=false;render();toast(online?msg:msg+' · vai sincronizar quando a internet voltar',tipo);
+  }catch(e){
+    ui.busy=false;render();
+    toast(String(e&&(e.code||e.message)||'').toUpperCase().indexOf('PERMISSION')>-1?'O banco recusou a gravação. Confira as regras do Firebase.':'Não consegui salvar. Tente de novo.');
+  }
+}
+function toast(t,tipo){
+  var old=document.querySelector('.toast');if(old)old.remove();
+  var d=document.createElement('div');d.className='toast'+(tipo?' '+tipo:'');d.setAttribute('role','status');d.textContent=t;document.body.appendChild(d);
+  setTimeout(function(){d.remove()},3200);
+}
+
+/* ===================== Telas ===================== */
+function cabecalho(g){
+  var mes=mesDe(hoje()),r=resumo(mes);
+  var faixa=g.prox?g.prox[0]-g.base:1,dentro=g.prox?g.xp-g.base:1,pctXp=Math.min(100,dentro/faixa*100);
+  var h='<section class="panel player"><div class="avatar">'+svg('escudo',' style="color:var(--violet)"')+'<b>'+esc(S.nome.charAt(0).toUpperCase())+'</b></div><div class="info">'+
+    '<span class="lbl">Missão Mesada · '+nomeMes(mes)+'</span><h1>'+esc(S.nome)+'</h1><span class="rank">Nível '+g.nivel+' · '+g.rank+'</span>'+
+    '<div class="xpbar" role="img" aria-label="Experiência"><i style="width:'+pctXp+'%"></i></div>'+
+    '<div class="xptxt num"><span><b>'+g.xp+' XP</b></span><span>'+(g.prox?'faltam '+(g.prox[0]-g.xp)+' para '+g.prox[1]:'nível máximo')+'</span></div></div></section>';
+  var blocos='';for(var i=0;i<20;i++){var f=Math.max(0,Math.min(1,(r.saldo-i*5)/5));blocos+='<span><i style="width:'+(f*100)+'%"></i></span>'}
+  var extra=r.saldo>S.base?r.saldo-S.base:0,bb='';
+  if(extra){var nb=Math.min(20,Math.ceil(extra/5));for(var j=0;j<nb;j++){var f2=Math.max(0,Math.min(1,(extra-j*5)/5));bb+='<span><i style="width:'+(f2*100)+'%"></i></span>'}}
+  h+='<section class="panel cofre" aria-label="Cofre do mês"><div class="cofre-top"><div><span class="lbl">Cofre do mês</span><div class="valor num">'+brl(r.saldo)+'</div></div><div class="de num">começou com<br><b class="gold">'+brl(S.base)+'</b></div></div>'+
+    '<div class="hp" role="img" aria-label="Cada bloco vale R$ 5">'+blocos+'</div>'+(bb?'<span class="lbl" style="color:var(--green)">Bônus acima da mesada</span><div class="hp bonus">'+bb+'</div>':'')+
+    '<div class="mov num"><span class="neg">Perdeu '+brl(-r.perdas)+'</span><span class="pos">Bônus '+brl(r.ganhos)+'</span></div></section>';
+  var medOn=g.medalhas.filter(function(m){return m.a>=m.t}).length;
+  h+='<section class="placar">'+
+    '<div class="stat"><span class="v num" style="color:var(--gold)">'+svg('chama')+g.seq+'</span><span class="t">dias seguidos perfeitos</span></div>'+
+    '<div class="stat"><span class="v num cy">'+svg('estrela')+g.perfMes+'</span><span class="t">dias perfeitos no mês</span></div>'+
+    '<div class="stat"><span class="v num" style="color:var(--violet)">'+svg('escudo')+medOn+'/'+g.medalhas.length+'</span><span class="t">medalhas</span></div></section>';
+  h+='<section class="sec"><div class="sec-h"><span class="lbl">Mapa da semana</span></div><div class="semana">'+mapaSemana(g)+'</div></section>';
+  return h;
+}
+function mapaSemana(g){
+  var hj=hoje(),ini=somaDias(hj,-diaSemana(hj)),out='';
+  for(var k=0;k<7;k++){var d=somaDias(ini,k),cls,cont;
+    if(d<S.inicio){cls='fora';cont='–'}
+    else if(d>hj){cls='';cont=String(partes(d)[2])}
+    else if(d===hj){var iH=infoDia(d);cls='hoje'+(iH.faltas||iH.desc?' no':'');cont=iH.faltas||iH.desc?svg('x'):String(partes(d)[2])}
+    else{var i=g.info[d]||infoDia(d);cls=i.perfeito?'ok':'no';cont=svg(i.perfeito?'check':'x')}
+    out+='<div class="sd '+cls+'"><div class="q" title="'+dataCurta(d)+'">'+cont+'</div><span class="d">'+DIAS[diaSemana(d)]+'</span></div>';
+  }
+  return out;
+}
+function telaHoje(){
+  var mes=mesDe(ui.data),wd=diaSemana(ui.data),editar=ui.pais&&!ui.readOnly,hj=hoje(),fechado=ui.data<hj;
+  var pa=partes(hj),min=fmt(new Date(pa[0],pa[1]-2,1));
+  var tarefas=S.tarefas.filter(function(t){return t.dias.indexOf(wd)>-1});
+  var cards=tarefas.map(function(t){
+    var f=S.lanc.find(function(l){return l.tipo==='falta'&&l.ref===t.id&&l.d===ui.data});
+    var pf=porFalta(t,mes),cls='',tag,btn='';
+    if(f){cls='no';tag='<span class="tag no num">Falhou '+brl(f.valor)+'</span>';if(editar)btn='<button class="btn sm" data-act="desfazer" data-id="'+f.id+'">Desfazer</button>'}
+    else{
+      if(fechado&&ui.data>=S.inicio){cls='ok';tag='<span class="tag ok">Cumprida +'+XP_TAREFA+' XP</span>'}
+      else if(fechado){tag='<span class="tag jogo">Sem falta</span>'}
+      else tag='<span class="tag jogo">Em jogo</span>';
+      if(editar)btn='<button class="btn sm perigo" data-act="falta" data-id="'+t.id+'">Não fez</button>';
+    }
+    return '<div class="missao '+cls+'"><div class="ico">'+svg(iconeTarefa(t.nome))+'</div><div class="txt"><div class="nome">'+esc(t.nome)+'</div><div class="sub num">Vale '+brl(pf)+' por dia · +'+XP_TAREFA+' XP</div></div><div class="lado">'+tag+btn+'</div></div>';
+  }).join('')||'<div class="vazio">Nenhuma missão programada para este dia.</div>';
+  var doDia=S.lanc.filter(function(l){return l.tipo==='extra'&&l.d===ui.data});
+  var extrasRows=doDia.map(function(l){
+    return '<div class="row"><div class="txt"><div class="nome">'+esc(l.nome)+'</div><div class="sub">'+esc(l.por)+(l.obs?' · '+esc(l.obs):'')+(l.valor>0?' · +'+XP_BONUS+' XP':'')+'</div></div><span class="val num '+(l.valor<0?'neg':'pos')+'">'+(l.valor>0?'+':'')+brl(l.valor)+'</span>'+(editar?'<button class="btn sm" data-act="desfazer" data-id="'+l.id+'">Desfazer</button>':'')+'</div>';
+  }).join('');
+  var h='<div class="datebar"><div class="campo"><label for="f-data">Dia</label><input type="date" id="f-data" value="'+ui.data+'" max="'+hj+'" min="'+min+'"></div>'+
+    (ui.data!==hj?'<button class="btn" data-act="hoje">Voltar para hoje</button>':'')+'</div>';
+  var titulo=ui.data===hj?'Missões de hoje':'Missões de '+dataCurta(ui.data);
+  var dica=ui.data===hj?(ui.data<S.inicio?'O jogo começa em '+dataCurta(S.inicio)+'. O dinheiro já vale hoje.':'Dia sem nenhuma falta vale +'+XP_DIA_PERFEITO+' XP de bônus à meia-noite.'):'';
+  h+='<section class="sec"><div class="sec-h"><h2>'+titulo+'</h2></div>'+(dica?'<div class="dica">'+dica+'</div>':'')+'<div class="missoes">'+cards+'</div></section>';
+  if(doDia.length)h+='<section class="sec"><div class="sec-h"><h2>Comportamento neste dia</h2></div><div class="list">'+extrasRows+'</div></section>';
+  if(editar){
+    var bts=S.extras.map(function(x){var d=x.tipo==='desconto';
+      return '<button class="extra-btn '+(d?'d':'b')+'" data-act="extra" data-id="'+x.id+'"><span class="n">'+esc(x.nome)+'</span><span class="val num '+(d?'neg':'pos')+'">'+(d?'−':'+')+brl(x.valor)+'</span></button>'}).join('');
+    h+='<section class="sec"><div class="sec-h"><h2>Registrar comportamento</h2></div><div class="campo"><label for="f-obs">Observação (opcional)</label><input type="text" id="f-obs" maxlength="120" placeholder="Ex.: reclamou para lavar a louça"></div><div class="grid2">'+bts+'</div></section>';
+  }
+  return h;
+}
+function telaMedalhas(g){
+  var cards=g.medalhas.map(function(m){var on=m.a>=m.t;
+    return '<div class="medalha'+(on?' on':'')+'"><div class="topo"><div class="em">'+HEX+svg(m.i,' class="in"')+'</div><div style="min-width:0"><div class="n">'+m.n+'</div><div class="s">'+m.s+'</div></div></div>'+
+      '<div class="prog" role="img" aria-label="'+m.a+' de '+m.t+'"><i style="width:'+(m.a/m.t*100)+'%"></i></div><div class="s num">'+(on?'Conquistada':m.a+' de '+m.t)+'</div></div>'}).join('');
+  var nv=NIVEIS.map(function(n,i){var at=i+1===g.nivel;
+    return '<div class="row'+(at?' atual':'')+'"><div class="txt"><div class="nome">Nível '+(i+1)+' · '+n[1]+'</div></div><span class="val num cy">'+n[0]+' XP</span></div>'}).join('');
+  return '<section class="sec"><div class="sec-h"><h2>Medalhas</h2></div><div class="medalhas">'+cards+'</div></section>'+
+    '<section class="sec"><div class="sec-h"><h2>Como ganhar XP</h2></div><div class="regra">'+
+    '<div><b class="cy">+'+XP_TAREFA+' XP</b> por missão cumprida no dia.</div>'+
+    '<div><b class="cy">+'+XP_DIA_PERFEITO+' XP</b> por dia perfeito, sem nenhuma falta e sem desconto de comportamento.</div>'+
+    '<div><b class="cy">+'+XP_BONUS+' XP</b> por bônus de comportamento.</div>'+
+    '<div>O XP do dia entra quando o dia termina. XP e medalhas não viram dinheiro. Eles mostram a evolução.</div></div></section>'+
+    '<section class="sec niveis"><div class="sec-h"><h2>Patentes</h2></div><div class="list">'+nv+'</div></section>';
+}
+function telaHistorico(){
+  var mes=mesDe(hoje()),editar=ui.pais&&!ui.readOnly;
+  var ls=S.lanc.filter(function(l){return l.mes===mes}).sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:b.ts-a.ts});
+  var rows=ls.map(function(l){
+    var del='';
+    if(editar){del=ui.conf===l.id?'<button class="btn sm perigo" data-act="apagar" data-id="'+l.id+'">Confirmar</button>':'<button class="btn sm" data-act="conf" data-id="'+l.id+'">Remover</button>'}
+    return '<div class="row"><div class="txt"><div class="nome">'+esc(l.nome)+'</div><div class="sub">'+dataCurta(l.d)+' · '+esc(l.por)+(l.obs?' · '+esc(l.obs):'')+'</div></div><span class="val num '+(l.valor<0?'neg':'pos')+'">'+(l.valor>0?'+':'')+brl(l.valor)+'</span>'+del+'</div>';
+  }).join('')||'<div class="vazio">Nada registrado neste mês. Cofre intacto até aqui.</div>';
+  var h='<section class="sec"><div class="sec-h"><h2>Lançamentos de '+nomeMes(mes)+'</h2></div><div class="list">'+rows+'</div></section>';
+  var meses=[];S.lanc.forEach(function(l){if(l.mes!==mes&&meses.indexOf(l.mes)<0)meses.push(l.mes)});
+  meses.sort().reverse();
+  if(meses.length){
+    h+='<section class="sec"><div class="sec-h"><h2>Meses anteriores</h2></div><div class="list">'+meses.map(function(m){var r=resumo(m);
+      return '<div class="row"><div class="txt"><div class="nome" style="text-transform:capitalize">'+nomeMes(m)+'</div><div class="sub num">Perdeu '+brl(-r.perdas)+' · bônus '+brl(r.ganhos)+'</div></div><span class="val num gold">'+brl(r.saldo)+'</span></div>'}).join('')+'</div></section>';
+  }
+  return h;
+}
+function telaRegras(){
+  if(ui.draft)return telaEditar();
+  var mes=mesDe(hoje()),editar=ui.pais&&!ui.readOnly;
+  var rows=S.tarefas.map(function(t){
+    var dias=DIAS.map(function(d,i){return '<span class="dia'+(t.dias.indexOf(i)>-1?' on':'')+'" title="'+DIAS_NOME[i]+'">'+d+'</span>'}).join('');
+    return '<div class="row"><div class="txt"><div class="nome">'+esc(t.nome)+'</div><div class="dias" style="margin-top:6px">'+dias+'</div><div class="sub num" style="margin-top:4px">'+ocorr(t.dias,mes)+' vezes no mês · '+brl(porFalta(t,mes))+' por falta</div></div><span class="val num gold">'+brl(t.valor)+'</span></div>';
+  }).join('');
+  var soma=r2(S.tarefas.reduce(function(a,t){return a+t.valor},0));
+  var ex=S.extras.map(function(x){var d=x.tipo==='desconto';return '<div class="row"><div class="txt"><div class="nome">'+esc(x.nome)+'</div><div class="sub">'+(d?'Desconto':'Bônus')+'</div></div><span class="val num '+(d?'neg':'pos')+'">'+(d?'−':'+')+brl(x.valor)+'</span></div>'}).join('');
+  var h='<section class="sec"><div class="sec-h"><h2>Missões e quanto valem</h2>'+(editar?'<button class="btn" data-act="editar">Editar regras</button>':'')+'</div><div class="list">'+rows+'<div class="row"><div class="txt"><div class="nome">Total</div></div><span class="val num gold">'+brl(soma)+'</span></div></div></section>';
+  h+='<section class="sec"><div class="sec-h"><h2>Comportamento</h2></div><div class="list">'+ex+'</div></section>';
+  h+='<section class="sec"><div class="sec-h"><h2>Como funciona o cofre</h2></div><div class="regra">'+
+    '<div>Todo mês o cofre começa com <b>'+brl(S.base)+'</b>.</div>'+
+    '<div>Cada missão tem um valor no mês. Esse valor é dividido pelos dias em que ela acontece. Cada dia que a missão não é feita tira essa parte do cofre.</div>'+
+    '<div>Reclamar ou responder a mãe tira um valor fixo. Tarefa extra e bom comportamento colocam bônus no cofre.</div>'+
+    '<div>O cofre nunca fica abaixo de <b>R$ 0,00</b>. No fim do mês o '+esc(S.nome)+' recebe o que sobrou, e no dia 1º o cofre volta para '+brl(S.base)+'.</div></div></section>';
+  if(editar)h+='<div class="acoes"><button class="btn" data-act="trocar-pin">Trocar PIN</button></div>';
+  return h;
+}
+function somaDraft(){return r2(ui.draft.tarefas.reduce(function(a,t){return a+numIn(t.valor)},0))}
+function draftValido(){
+  var d=ui.draft;if(Math.abs(somaDraft()-S.base)>0.004)return false;
+  return d.tarefas.every(function(t){return t.nome.trim()&&t.dias.length&&numIn(t.valor)>0})&&d.extras.every(function(x){return x.nome.trim()&&numIn(x.valor)>0});
+}
+function textoSoma(){var s=somaDraft(),dif=r2(S.base-s);
+  if(Math.abs(dif)<0.005)return {ok:true,t:'Soma '+brl(s)+'. Fechou os '+brl(S.base)+'.'};
+  return {ok:false,t:'Soma '+brl(s)+'. '+(dif>0?'Faltam '+brl(dif):'Passou '+brl(-dif))+' para fechar '+brl(S.base)+'.'};
+}
+function telaEditar(){
+  var d=ui.draft;
+  var ts=d.tarefas.map(function(t,i){
+    var dias=DIAS.map(function(x,j){return '<button type="button" class="dia'+(t.dias.indexOf(j)>-1?' on':'')+'" data-act="d-dia" data-i="'+i+'" data-j="'+j+'" aria-pressed="'+(t.dias.indexOf(j)>-1)+'" aria-label="'+DIAS_NOME[j]+'">'+x+'</button>'}).join('');
+    return '<div class="edit-card"><div class="edit-linha"><div class="campo"><label for="t-n-'+i+'">Missão</label><input type="text" id="t-n-'+i+'" data-dt="nome" data-i="'+i+'" value="'+esc(t.nome)+'"></div><div class="campo"><label for="t-v-'+i+'">R$ no mês</label><input type="text" inputmode="decimal" id="t-v-'+i+'" data-dt="valor" data-i="'+i+'" value="'+esc(String(t.valor).replace('.',','))+'"></div></div><div class="sec-h"><div class="dias">'+dias+'</div><button type="button" class="btn sm perigo" data-act="d-del" data-i="'+i+'">Remover</button></div></div>';
+  }).join('');
+  var xs=d.extras.map(function(x,i){
+    return '<div class="edit-card"><div class="edit-linha"><div class="campo"><label for="x-n-'+i+'">Item</label><input type="text" id="x-n-'+i+'" data-dx="nome" data-i="'+i+'" value="'+esc(x.nome)+'"></div><div class="campo"><label for="x-v-'+i+'">R$</label><input type="text" inputmode="decimal" id="x-v-'+i+'" data-dx="valor" data-i="'+i+'" value="'+esc(String(x.valor).replace('.',','))+'"></div></div><div class="sec-h"><select id="x-t-'+i+'" data-dx="tipo" data-i="'+i+'" style="width:auto"><option value="desconto"'+(x.tipo==='desconto'?' selected':'')+'>Desconto</option><option value="bonus"'+(x.tipo==='bonus'?' selected':'')+'>Bônus</option></select><button type="button" class="btn sm perigo" data-act="x-del" data-i="'+i+'">Remover</button></div></div>';
+  }).join('');
+  var st=textoSoma();
+  return '<section class="sec"><div class="sec-h"><h2>Editar missões</h2><button class="btn" data-act="d-add">Incluir missão</button></div>'+ts+
+    '<div id="soma" class="soma num'+(st.ok?' ok':'')+'">'+st.t+'</div></section>'+
+    '<section class="sec"><div class="sec-h"><h2>Editar comportamento</h2><button class="btn" data-act="x-add">Incluir item</button></div>'+xs+'</section>'+
+    '<div class="aviso">Lançamentos já feitos mantêm o valor da época. Os novos valores valem a partir de agora.</div>'+
+    '<div class="acoes"><button class="btn" data-act="d-cancel">Cancelar</button><button class="btn prim" id="btn-regras" data-act="d-save"'+(draftValido()?'':' disabled')+'>Salvar regras</button></div>';
+}
+function atualizaSoma(){
+  var el=document.getElementById('soma');if(!el)return;var st=textoSoma();
+  el.textContent=st.t;el.className='soma num'+(st.ok?' ok':'');
+  var b=document.getElementById('btn-regras');if(b)b.disabled=!draftValido();
+}
+function sheetPin(){
+  if(!ui.pin)return '';
+  var criar=ui.pin==='criar';
+  return '<div class="sheet-bg" data-act="pin-fechar"><form class="sheet" id="pin-form"><h3>'+(criar?'Crie o PIN de pai e mãe':'Entrar como pai ou mãe')+'</h3>'+
+    '<div class="dica">'+(criar?'4 números. O '+esc(S.nome)+' não deve saber.':'Digite o PIN de 4 números.')+'</div>'+
+    '<input type="password" id="f-pin" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="PIN">'+
+    (criar?'<input type="password" id="f-pin2" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Repita o PIN" placeholder="repita">':'')+
+    (ui.pinErr?'<div class="erro">'+esc(ui.pinErr)+'</div>':'')+
+    '<div class="acoes"><button type="button" class="btn" data-act="pin-fechar">Cancelar</button><button type="submit" class="btn prim" data-act="pin-ok">'+(criar?'Salvar PIN':'Entrar')+'</button></div></form></div>';
+}
+function render(){
+  if(!pronto){telaAviso('Carregando...','Conectando ao cofre.');return}
+  var app=document.getElementById('app'),g=jogo();
+  var h=cabecalho(g);
+  h+='<nav class="tabs" role="tablist">'+[['hoje','Missões'],['med','Medalhas'],['hist','Histórico'],['regras','Regras']].map(function(t){return '<button role="tab" aria-selected="'+(ui.tab===t[0])+'" data-act="tab" data-id="'+t[0]+'">'+t[1]+'</button>'}).join('')+'</nav>';
+  if(ui.readOnly)h+='<div class="aviso">Esta tela é só para acompanhar. Os lançamentos ficam com o pai e a mãe.</div>';
+  var corpo=ui.tab==='hist'?telaHistorico():ui.tab==='regras'?telaRegras():ui.tab==='med'?telaMedalhas(g):telaHoje();
+  h+='<div class="'+(ui.busy?'ocupado':'')+'"><div class="sec" style="gap:18px">'+corpo+'</div></div>';
+  app.innerHTML=h;
+  var bar=document.getElementById('bar');if(!bar){bar=document.createElement('div');bar.id='bar';bar.className='bar';document.body.appendChild(bar)}
+  bar.innerHTML='<div class="bar-in">'+(online?'':'<span class="lbl" style="color:var(--red);width:100%">Sem internet · os lançamentos sincronizam quando voltar</span>')+(ui.busy?'<span>Salvando...</span>':ui.pais?
+    '<span class="seg" role="group" aria-label="Quem está lançando">'+['Pai','Mãe'].map(function(p){return '<button aria-pressed="'+(ui.por===p)+'" data-act="por" data-id="'+p+'">'+p+'</button>'}).join('')+'</span><button class="btn sm" data-act="sair">Sair do modo pais</button>'
+    :'<span class="lbl">Modo jogador</span><button class="btn sm" data-act="entrar">Sou pai ou mãe</button>')+'</div>';
+  var sh=document.getElementById('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}
+  sh.innerHTML=sheetPin();
+  if(ui.pin){var p=document.getElementById('f-pin');if(p)p.focus()}
+}
+
+/* ===================== Ações ===================== */
+function lanc(o){var d=o.d;return Object.assign({id:'l'+uid(),d:d,mes:mesDe(d),por:ui.por,obs:'',ts:Date.now()},o)}
+document.addEventListener('click',async function(e){
+  var b=e.target.closest('[data-act]');if(!b||ui.busy)return;
+  var a=b.dataset.act,id=b.dataset.id,st;
+  if(a==='pin-fechar'&&e.target!==b)return;
+  if(a!=='conf'&&a!=='apagar')ui.conf=null;
+  if(a==='tab'){ui.tab=id;ui.draft=null;ssv('mm_tab',id);render()}
+  else if(a==='hoje'){ui.data=hoje();ssv('mm_data',ui.data);render()}
+  else if(a==='falta'){
+    var t=S.tarefas.find(function(x){return x.id===id});if(!t)return;
+    if(S.lanc.some(function(l){return l.tipo==='falta'&&l.ref===id&&l.d===ui.data}))return;
+    var v=porFalta(t,mesDe(ui.data));
+    st=clone(S);st.lanc.push(lanc({d:ui.data,tipo:'falta',ref:id,nome:t.nome,valor:-v}));
+    salvar(st,'Missão falhou: −'+brl(v),'loss');
+  }
+  else if(a==='extra'){
+    var x=S.extras.find(function(y){return y.id===id});if(!x)return;
+    var obs=(document.getElementById('f-obs')||{}).value||'';
+    st=clone(S);st.lanc.push(lanc({d:ui.data,tipo:'extra',ref:id,nome:x.nome,valor:x.tipo==='desconto'?-x.valor:x.valor,obs:obs.trim()}));
+    salvar(st,x.tipo==='desconto'?x.nome+': −'+brl(x.valor):'BÔNUS! +'+brl(x.valor)+' e +'+XP_BONUS+' XP',x.tipo==='desconto'?'loss':'win');
+  }
+  else if(a==='desfazer'||a==='apagar'){st=clone(S);st.lanc=st.lanc.filter(function(l){return l.id!==id});salvar(st,'Lançamento removido')}
+  else if(a==='conf'){ui.conf=id;render()}
+  else if(a==='entrar'){ui.pin=S.pin?'entrar':'criar';ui.pinErr='';render()}
+  else if(a==='trocar-pin'){ui.pin='criar';ui.pinErr='';render()}
+  else if(a==='pin-fechar'){ui.pin=null;render()}
+  else if(a==='pin-ok'){
+    var pv=(document.getElementById('f-pin').value||'').trim();
+    if(!/^\d{4}$/.test(pv)){ui.pinErr='Use exatamente 4 números.';render();return}
+    if(ui.pin==='criar'){
+      var v2=(document.getElementById('f-pin2').value||'').trim();
+      if(pv!==v2){ui.pinErr='Os dois PINs não são iguais.';render();return}
+      st=clone(S);st.pin=await hash(pv);ui.pais=true;ui.pin=null;salvar(st,'PIN salvo. Modo pais ativo.');
+    }else{
+      if((await hash(pv))!==S.pin){ui.pinErr='PIN incorreto.';render();return}
+      ui.pais=true;ui.pin=null;ssv('mm_pais','1');render();toast('Modo pais ativo');
+    }
+  }
+  else if(a==='sair'){ui.pais=false;ui.draft=null;ssv('mm_pais',null);render()}
+  else if(a==='por'){ui.por=id;lsv('mm_por',id);render()}
+  else if(a==='editar'){ui.draft={tarefas:clone(S.tarefas),extras:clone(S.extras)};render()}
+  else if(a==='d-cancel'){ui.draft=null;render()}
+  else if(a==='d-add'){ui.draft.tarefas.push({id:'t'+uid(),nome:'',dias:[0,1,2,3,4,5,6],valor:0});render();var n=document.getElementById('t-n-'+(ui.draft.tarefas.length-1));if(n)n.focus()}
+  else if(a==='d-del'){ui.draft.tarefas.splice(+b.dataset.i,1);render()}
+  else if(a==='d-dia'){var t2=ui.draft.tarefas[+b.dataset.i],j=+b.dataset.j,k=t2.dias.indexOf(j);if(k>-1)t2.dias.splice(k,1);else{t2.dias.push(j);t2.dias.sort()}render()}
+  else if(a==='x-add'){ui.draft.extras.push({id:'e'+uid(),nome:'',tipo:'desconto',valor:0});render()}
+  else if(a==='x-del'){ui.draft.extras.splice(+b.dataset.i,1);render()}
+  else if(a==='d-save'){
+    if(!draftValido())return;
+    st=clone(S);
+    st.tarefas=ui.draft.tarefas.map(function(t){return {id:t.id,nome:t.nome.trim(),dias:t.dias.slice(),valor:r2(numIn(t.valor))}});
+    st.extras=ui.draft.extras.map(function(x){return {id:x.id,nome:x.nome.trim(),tipo:x.tipo,valor:r2(numIn(x.valor))}});
+    salvar(st,'Regras salvas');
+  }
+});
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.dataset.dt&&ui.draft){ui.draft.tarefas[+t.dataset.i][t.dataset.dt]=t.value;atualizaSoma()}
+  else if(t.dataset.dx&&ui.draft){ui.draft.extras[+t.dataset.i][t.dataset.dx]=t.value;atualizaSoma()}
+});
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='f-data'&&t.value){ui.data=t.value>hoje()?hoje():t.value;ssv('mm_data',ui.data);render()}
+  else if(t.dataset.dx&&ui.draft){ui.draft.extras[+t.dataset.i][t.dataset.dx]=t.value;atualizaSoma()}
+});
+document.addEventListener('submit',function(e){e.preventDefault()});
+
+render();
+iniciarFirebase();
+})();
+</script>
+</body>
+</html>

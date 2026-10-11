@@ -332,7 +332,7 @@ function iconeTarefa(nome){var n=nome.toLowerCase();
 var HEX='<svg viewBox="0 0 40 44" aria-hidden="true"><path d="M20 1.5l17 9.5v22L20 42.5 3 33V11z" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="2"/></svg>';
 
 /* ===================== Firebase: lê tudo em tempo real e grava só o que mudou ===================== */
-function lista(x){return !x?[]:Array.isArray(x)?x.filter(Boolean):Object.values(x)}
+function lista(x){if(x==null)return [];var arr=Array.isArray(x)?x:Object.values(x);return arr.filter(function(v){return v!=null})}
 function telaAviso(titulo,texto){document.getElementById('app').innerHTML='<section class="panel" style="display:flex;flex-direction:column;gap:8px"><span class="lbl">Missão Mesada</span><h1 style="font-size:1.3rem">'+titulo+'</h1><div class="dica">'+texto+'</div></section>'}
 function iniciarFirebase(){
   var c=window.FIREBASE_CONFIG;
